@@ -1,0 +1,16 @@
+name = "DefectComplexScalarOrderParameter"
+uuid = "69d9b28e-e3bb-4692-9f3e-28942fd913c1"
+authors = ["bbaud "]
+version = "0.1.0"
+
+[deps]
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SpecialMatrices = "928aab9d-ef52-54ac-8ca1-acd7ca42c160"
+WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
+
+[compat]
+HDF5 = "0.17.3"
+LinearAlgebra = "1.11.0"
+SpecialMatrices = "3.1.0"
+WriteVTK = "1.21.2"
