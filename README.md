@@ -1,1 +1,0 @@
-# OrderDisorderActiveField_LinesAndDefectTracer
