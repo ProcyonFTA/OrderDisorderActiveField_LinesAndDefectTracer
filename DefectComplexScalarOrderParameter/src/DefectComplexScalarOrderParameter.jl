@@ -1,5 +1,7 @@
 module DefectComplexScalarOrderParameter
 
+    using HDF5, SpecialMatrices, WriteVTK
+
     function import_phi_field(path_to_h5)
         # Input : string --> path to an HDF5 file with two fields "pre" and "pim" for real and imaginary part of a field 
         # Returns : complex array --> complex field φ
@@ -358,6 +360,107 @@ module DefectComplexScalarOrderParameter
             end
         end
         return inline, infos_line, extremity_direction
+    end
+
+    function get_sorted_points_line(points,inline,id_line)
+        sp = points[inline[:,1].==id_line,:]
+        si = inline[inline[:,1].==id_line,:]
+        order = sortperm(si[:,2])
+        return sp[order,:],si[order,:]
+    end
+
+    function cumulative_length(points,inline,id_line;sorted_points=false)
+        # compute the cumulative array of the length along a line going through the points at the indices
+        p,i1 = get_sorted_points_line(points,inline,id_line)
+        s = zeros(Float64,size(p)[1])
+        if size(p)[1]==1
+            if sorted_points
+                return [1.0],p,i1
+            else
+                return [1.0]
+            end
+        else
+            for j=2:size(p)[1]
+                s[j]=s[j-1]+norm_array_indices(p,j,j-1)
+            end
+            if sorted_points
+                return s,p,i1
+            else
+                return s
+            end
+        end
+    end
+
+    function scaffold_points_lines(points,inline)
+        id_lines = union(inline[:,1])
+        offset = 0
+        x = Float64[]
+        y = Float64[]
+        z = Float64[]
+        ids = Float64[]
+        icr = Float64[]
+        lengths = Float64[]
+        w = Array{String,1}(undef,length(id_lines))
+        for (k,id) in enumerate(id_lines)
+            s,sp,si = cumulative_length(points,inline,id;sorted_points=true)
+            append!(x,sp[:,1])
+            append!(y,sp[:,2])
+            append!(z,sp[:,3])
+            n_points = length(s)
+            append!(ids,id.*ones(Int64,n_points))
+            cl = hypot(sp[1,1]-sp[end,1],sp[1,2]-sp[end,2],sp[1,3]-sp[end,3])/s[end]
+            append!(icr,cl.*ones(Int64,n_points))
+            append!(lengths,s[end].*ones(Int64,n_points))            
+            w[k] = "$n_points $(join(offset .+ (0:n_points-1), " "))"
+            offset += n_points
+        end
+        return (x,y,z),w,(ids,icr,lengths)
+    end
+
+    function write_lines_vtk(points,inline,path)
+        (x,y,z),w,(ids,icr,lengths) = scaffold_points_lines(points,inline)
+        id_lines = union(inline[:,1])
+        nbr_pts = length(x)
+        nbr_lns = length(id_lines)
+        open(path,"w") do f
+            println(f, "# vtk DataFile Version 2.0")
+            println(f, "Multiple Lines Data")
+            println(f, "ASCII")
+            println(f, "DATASET POLYDATA")
+            println(f, "POINTS $nbr_pts float")
+            for k=1:length(x)
+                println(f, "$(x[k]) $(y[k]) $(z[k])")
+            end
+
+            println(f, "LINES $nbr_lns $(nbr_lns+nbr_pts)")
+            for k=1:length(id_lines)
+                println(f, w[k])
+            end
+
+            println(f,"POINT_DATA $nbr_pts")
+
+            println(f,"SCALARS id float")
+            println(f,"LOOKUP_TABLE default")
+            for k=1:length(x)
+                scalar_value =  ids[k]
+                println(f,"$scalar_value")
+            end
+            
+            println(f,"SCALARS icr float")
+            println(f,"LOOKUP_TABLE default")
+            for k=1:length(x)
+                scalar_value =  icr[k]
+                println(f,"$scalar_value")
+            end
+
+            println(f,"SCALARS length float")
+            println(f,"LOOKUP_TABLE default")
+            for k=1:length(x)
+                scalar_value =  lengths[k]
+                println(f,"$scalar_value")
+            end
+        end
+        return nothing
     end
 
 end # module DefectComplexScalarOrderParameter
